@@ -52,7 +52,7 @@ def pose_data_to_json(pose_data_samples):
     json_data["people"] = []
     person_id = -1
     cat_id = 1
-    score = 0.95  # Assume good certainty for all keypoints
+    score = 0.8  # Assume good certainty for all keypoints
     for pose_data in pose_data_samples:
         keypoints = pose_data.numpy()
         keypoints_with_score = []
@@ -67,7 +67,6 @@ def pose_data_to_json(pose_data_samples):
     return json_data
 
 def json_out(pred, id, json_dir, video):
-
     json_name = os.path.join(json_dir, f"{os.path.basename(video).split('.mp4')[0]}_{id:06d}.json")
     json_file = open(json_name, "w")
     json.dump(pose_data_to_json(pred), json_file, indent=6)
@@ -106,7 +105,7 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_jso
     if not os.path.exists(dir_out_video):
         os.makedirs(dir_out_video)
 
-    calib = toml.load(glob.glob(os.path.join(calib_file, "*.toml"))[0])
+    calib = toml.load(calib_file)
 
     # Path to the first image/video file
     video_files = [filename for filename in os.listdir(dir_video) if
@@ -138,18 +137,16 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_jso
 
         for key in calib.keys():
             if calib.get(key).get("name") == cam:
-                print(calib.get(key).get("name"))
                 intrinsic_matrix = tf.constant(calib.get(key).get("matrix"), dtype=tf.float32)
                 distortions = tf.constant(calib.get(key).get("distortions"), dtype=tf.float32)
 
-        joint_names = model.per_skeleton_joint_names[skeleton].numpy().astype(str)
-        joint_edges = model.per_skeleton_joint_edges[skeleton].numpy()
+        """joint_names = model.per_skeleton_joint_names[skeleton].numpy().astype(str)
+        joint_edges = model.per_skeleton_joint_edges[skeleton].numpy()"""
 
         # Initializing variables for the loop
         frame_idx = 0
 
         tot_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
         progress = tqdm(total=tot_frames, desc=f"Processing {video_name}", position=0, leave=True)
 
         while True:
@@ -174,7 +171,7 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_jso
             ##############################################
             ################## DETECTION #################
             # Perform inference on the frame
-            pred = model.detect_poses(frame, intrinsic_matrix=intrinsic_matrix, skeleton='coco_19')
+            pred = model.detect_poses(frame, intrinsic_matrix=intrinsic_matrix, skeleton=skeleton)
 
             # Save detection's parameters
             bboxes = pred['boxes']
@@ -182,7 +179,7 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_jso
 
             ################## JSON Output #################
             # Add track id (useful for multiperson tracking)
-            json_out(pred, frame_idx, json_dir, video_name)
+            json_out(pose_result_2d, frame_idx, json_dir, video_name)
 
             frame_idx += 1
             progress.update(1)
@@ -200,7 +197,7 @@ if __name__ == '__main__':
               "Starting debugging script.")
 
         if os.name == 'posix': # if running on WSL
-            args.model_path = hub.load("/mnt/c/iDrink/metrabs_models/tensorflow/metrabs_eff2l_y4_384px_800k_28ds/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90")
+            args.model_path = "/mnt/c/iDrink/metrabs_models/tensorflow/metrabs_eff2l_y4_384px_800k_28ds/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90"
             args.dir_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/recordings"
             args.dir_out_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/pose"
             args.dir_out_json = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/pose"
@@ -209,7 +206,7 @@ if __name__ == '__main__':
             args.filter_2d = False
 
         else:
-            args.model_path= hub.load(r"C:\iDrink\metrabs_models\tensorflow\metrabs_eff2l_y4_384px_800k_28ds\d8503163f1198d9d4ee97bfd9c7f316ad23f3d90")
+            args.model_path= r"C:\iDrink\metrabs_models\tensorflow\metrabs_eff2l_y4_384px_800k_28ds\d8503163f1198d9d4ee97bfd9c7f316ad23f3d90"
             args.dir_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\recordings"
             args.dir_out_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\pose"
             args.dir_out_json = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\pose"
