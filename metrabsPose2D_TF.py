@@ -143,11 +143,37 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_jso
         """joint_names = model.per_skeleton_joint_names[skeleton].numpy().astype(str)
         joint_edges = model.per_skeleton_joint_edges[skeleton].numpy()"""
 
+        try:
+            frame_batches = tfio.IODataset.from_ffmpeg(filepath, 'v:0').batch(8).prefetch(1)
+        except:
+            import imageio
+            def get_frame_batches(video_filepath, batch_size=8):
+                reader = imageio.get_reader(video_filepath)
+                frames = []
+                for frame in reader:
+                    frames.append(frame)
+                    if len(frames) == batch_size:
+                        yield np.array(frames)
+                        frames = []
+                if frames:
+                    yield np.array(frames)
+
+            frame_batches = get_frame_batches(filepath, batch_size=8)
+
         # Initializing variables for the loop
         frame_idx = 0
 
         tot_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         progress = tqdm(total=tot_frames, desc=f"Processing {video_name}", position=0, leave=True)
+
+        for frame_batch in frame_batches:
+            pred = model.detect_poses_batched(frame_batch, intrinsic_matrix=intrinsic_matrix[tf.newaxis], skeleton=skeleton)
+
+            bboxes = pred['boxes']
+            pose_result_2d = pred['poses2d']
+
+            print(pose_result_2d)
+
 
         while True:
             # Read frame from the webcam
@@ -214,6 +240,6 @@ if __name__ == '__main__':
             args.skeleton = 'coco_19'
             args.filter_2d = False
 
-    metrabs_pose_estimation_2d(args.dir_video, args.calib_file, args.dir_out_video, args.dir_out_json, args.skeleton,
-                               args.model_path, args.DEBUG)
+    metrabs_pose_estimation_2d(args.dir_video, args.calib_file, args.dir_out_video, args.dir_out_json, args.model_path,
+                               args.skeleton, args.DEBUG)
     pass
