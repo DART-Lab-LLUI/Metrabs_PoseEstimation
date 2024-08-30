@@ -43,23 +43,22 @@ def df_to_trc(df, trc_file, identifier, fps, n_frames, n_markers):
     trc['FileName'] = f'{identifier}.trc'
     trc['DataRate'] = fps
     trc['CameraRate'] = fps
-    trc['NumFrames'] = n_frames+1
+    trc['NumFrames'] = n_frames
     trc['NumMarkers'] = n_markers
     trc['Units'] = 'm'
     trc['OrigDataRate'] = fps
     trc['OrigDataStartFrame'] = 0
-    trc['OrigNumFrames'] = n_frames+1
-    trc['Frame#'] = [i for i in range(n_frames+1)]
-    trc['Time'] = [round(i / fps, 3) for i in range(n_frames+1)]
-
+    trc['OrigNumFrames'] = n_frames
+    trc['Frame#'] = [i for i in range(n_frames)]
+    trc['Time'] = [round(i / fps, 3) for i in range(n_frames)]
     trc['Markers'] = df.columns.tolist()
 
 
 
     for column in df.columns:
-        trc[column] = df[column].tolist()/1000
+        trc[column] = df[column].tolist()
 
-    for i in range(n_frames+1):
+    for i in range(n_frames):
         trc[i] = [trc['Time'][i], df.iloc[i, :].tolist()]
 
     trc.save(trc_file)
@@ -95,17 +94,11 @@ def add_to_dataframe(df, pose_result_3d):
     Returns DataFrame with added 3D keypoints
     """
 
-    """
-    # Old version might be used if x, y, z coordinates need to be split up in DataFrame
     temp = []
     for i in range(pose_result_3d.shape[1]):
-        temp.append(pose_result_3d[0][i][0])
-        temp.append(pose_result_3d[0][i][1])
-        temp.append(pose_result_3d[0][i][2])
+        temp.append([x/1000 for x in pose_result_3d[0][i].tolist()])
 
-    df.loc[len(df)] = temp"""
-
-    df.loc[len(df)] = pose_result_3d[0].tolist()
+    df.loc[len(df)] = temp
 
     return df
 
