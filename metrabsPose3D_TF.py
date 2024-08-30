@@ -20,7 +20,7 @@ import tensorflow_io as tfio
 
 parser = argparse.ArgumentParser(description='Metrabs 2D Pose Estimation for iDrink using Tensorflow')
 parser.add_argument('--identifier', metavar='id', type=str, help='Trial Identifier')
-parser.add_argument('--dir_video', metavar='dvi', type=str, help='Path to folder containing videos for pose estimation')
+parser.add_argument('--video_file', metavar='dvi', type=str, help='Path to folder containing videos for pose estimation')
 parser.add_argument('--calib_file', metavar='c', type=str, help='Path to calibration file')
 parser.add_argument('--dir_out_video', metavar='dvo', type=str, help='Path to folder to save output videos')
 parser.add_argument('--dir_out_trc', metavar='dtrc', type=str, help='Path to folder to save output trc files')
@@ -102,7 +102,7 @@ def add_to_dataframe(df, pose_result_3d):
 
     return df
 
-def metrabs_pose_estimation_3d(dir_video, calib_file, dir_out_video, dir_out_trc, model_path, identifier, skeleton='coco_19', DEBUG=False):
+def metrabs_pose_estimation_3d(video_file, calib_file, dir_out_video, dir_out_trc, model_path, identifier, skeleton='coco_19', DEBUG=False):
     """
     3D Pose estimaiton using Metrabs
 
@@ -140,95 +140,66 @@ def metrabs_pose_estimation_3d(dir_video, calib_file, dir_out_video, dir_out_trc
 
     calib = toml.load(calib_file)
 
-    # Path to the first image/video file
-    video_files = [filename for filename in os.listdir(dir_video) if
-                   filename.endswith('.mp4') or filename.endswith('.mov') or filename.endswith('.avi')]
-
-    for video_name in video_files:
-        filepath = os.path.realpath(os.path.join(dir_video, video_name))
-
-        ##################################################
-        #############  OPENING THE VIDEO  ################
-        # For a video file
-        cap = cv2.VideoCapture(filepath)
-
-        # Check if file is opened correctly
-        if not cap.isOpened():
-            print("Could not open file")
-            exit()
-
-        # get intrinsics from calib file
-        cam = re.search(r"cam\d*", video_name).group()
-        intrinsic_matrix = None
-        distortions = None
-
-        for key in calib.keys():
-            if calib.get(key).get("name") == cam:
-                intrinsic_matrix = tf.constant(calib.get(key).get("matrix"), dtype=tf.float32)
-                distortions = tf.constant(calib.get(key).get("distortions"), dtype=tf.float32)
-
-        joint_names = model.per_skeleton_joint_names[skeleton].numpy().astype(str)
-        joint_edges = model.per_skeleton_joint_edges[skeleton].numpy()
-
-        # Initializing variables for the loop
-        frame_idx = 0
-
-        #Prepare DataFrame
-
-        df = pd.DataFrame(columns=get_column_names(joint_names))
-
-        n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        n_markers = len(joint_names)
-
-        progress = tqdm(total=n_frames, desc=f"Processing {video_name}", position=0, leave=True)
-
-        while True:
-            # Read frame from the webcam
-            ret, frame = cap.read()
-
-            # If frame is read correctly ret is True
-            if not ret:
+    ##################################################
+    #############  OPENING THE VIDEO  ################
+    # For a video file
+    cap = cv2.VideoCapture(video_file)
+    # Check if file is opened correctly
+    if not cap.isOpened():
+        print("Could not open file")
+        exit()
+    # get intrinsics from calib file
+    cam = re.search(r"cam\d*", os.path.basename(video_file)).group()
+    intrinsic_matrix = None
+    distortions = None
+    for key in calib.keys():
+        if calib.get(key).get("name") == cam:
+            intrinsic_matrix = tf.constant(calib.get(key).get("matrix"), dtype=tf.float32)
+            distortions = tf.constant(calib.get(key).get("distortions"), dtype=tf.float32)
+    joint_names = model.per_skeleton_joint_names[skeleton].numpy().astype(str)
+    joint_edges = model.per_skeleton_joint_edges[skeleton].numpy()
+    # Initializing variables for the loop
+    frame_idx = 0
+    #Prepare DataFrame
+    df = pd.DataFrame(columns=get_column_names(joint_names))
+    n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    n_markers = len(joint_names)
+    progress = tqdm(total=n_frames, desc=f"Processing {os.path.basename(video_file)}", position=0, leave=True)
+    while True:
+        # Read frame from the webcam
+        ret, frame = cap.read()
+        # If frame is read correctly ret is True
+        if not ret:
+            break
+        # Stop setting for development
+        if DEBUG:
+            if frame_idx == 30:
                 break
-
-            # Stop setting for development
-            if DEBUG:
-                if frame_idx == 30:
-                    break
-
-            #convert Image t0 jpeg
-            _, frame = cv2.imencode('.jpg', frame)
-            frame = frame.tobytes()
-
-            #covnert jpeg to tensor and run prediction
-            frame = tf.image.decode_jpeg(frame, channels=3)
-
-            ##############################################
-            ################## DETECTION #################
-            # Perform inference on the frame
-            pred = model.detect_poses(frame, intrinsic_matrix=intrinsic_matrix, skeleton=skeleton)
-
-            # Save detection's parameters
-            bboxes = pred['boxes']
-            pose_result_3d = pred['poses3d'].numpy()
-
-            ################## Add to DataFrame #################
-            # Add coordinates to Dataframe
-            df = add_to_dataframe(df, pose_result_3d)
-
-            frame_idx += 1
-            progress.update(1)
-
-        # Release the VideoCapture object and close progressbar
-        cap.release()
-        progress.close()
-
-        if not os.path.exists(dir_out_trc):
-            os.makedirs(dir_out_trc)
-
-        trc_file = os.path.join(dir_out_trc, f"{os.path.basename(video_name).split('.mp4')[0]}_0-{frame_idx}.trc")
-
-        df_to_trc(df, trc_file, identifier, fps, n_frames, n_markers)
+        #convert Image t0 jpeg
+        _, frame = cv2.imencode('.jpg', frame)
+        frame = frame.tobytes()
+        #covnert jpeg to tensor and run prediction
+        frame = tf.image.decode_jpeg(frame, channels=3)
+        ##############################################
+        ################## DETECTION #################
+        # Perform inference on the frame
+        pred = model.detect_poses(frame, intrinsic_matrix=intrinsic_matrix, skeleton=skeleton)
+        # Save detection's parameters
+        bboxes = pred['boxes']
+        pose_result_3d = pred['poses3d'].numpy()
+        ################## Add to DataFrame #################
+        # Add coordinates to Dataframe
+        df = add_to_dataframe(df, pose_result_3d)
+        frame_idx += 1
+        progress.update(1)
+    # Release the VideoCapture object and close progressbar
+    cap.release()
+    progress.close()
+    if not os.path.exists(dir_out_trc):
+        os.makedirs(dir_out_trc)
+    trc_file = os.path.join(dir_out_trc, f"{os.path.basename(os.path.basename(video_file)).split('.mp4')[0]}_0-{frame_idx}.trc")
+    df_to_trc(df, trc_file, identifier, fps, n_frames, n_markers)
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -240,22 +211,21 @@ if __name__ == '__main__':
         if os.name == 'posix': # if running on WSL
             args.identifier = "S20240501-115510_P01_T01"
             args.model_path = hub.load("/mnt/c/iDrink/metrabs_models/tensorflow/metrabs_eff2l_y4_384px_800k_28ds/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90")
-            args.dir_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/recordings"
-            args.dir_out_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/pose"
+            args.video_file = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/recordings/cam1_trial_44_R_affected.mp4"
+            args.dir_out_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/pose-3d"
             args.dir_out_trc = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/pose"
             args.calib_file = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_Calibration/Calib_S20240501-115510.toml"
             args.skeleton = 'coco_19'
-
         else:
             args.identifier = "S20240501-115510_P01_T01"
             args.model_path= hub.load(r"C:\iDrink\metrabs_models\tensorflow\metrabs_eff2l_y4_384px_800k_28ds\d8503163f1198d9d4ee97bfd9c7f316ad23f3d90")
-            args.dir_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\recordings"
-            args.dir_out_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\pose"
+            args.video_file = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\recordings\cam1_trial_44_R_affected.mp4"
+            args.dir_out_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\pose-3d"
             args.dir_out_trc = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\pose"
             args.calib_file = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_Calibration\Calib_S20240501-115510.toml"
             args.skeleton = 'coco_19'
 
-    metrabs_pose_estimation_3d(args.dir_video, args.calib_file, args.dir_out_video, args.dir_out_trc, args.model_path,
+    metrabs_pose_estimation_3d(args.video_file, args.calib_file, args.dir_out_video, args.dir_out_trc, args.model_path,
                                args.identifier, args.skeleton, args.DEBUG)
 
     pass
