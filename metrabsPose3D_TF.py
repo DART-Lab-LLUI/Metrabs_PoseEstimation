@@ -6,8 +6,8 @@ import re
 
 import pandas as pd
 import toml
-import time
-import json
+from trc import TRCData
+from tqdm import tqdm
 
 import numpy as np
 
@@ -19,6 +19,7 @@ import tensorflow_io as tfio
 
 
 parser = argparse.ArgumentParser(description='Metrabs 2D Pose Estimation for iDrink using Tensorflow')
+parser.add_argument('--identifier', metavar='id', type=str, help='Trial Identifier')
 parser.add_argument('--dir_video', metavar='dvi', type=str, help='Path to folder containing videos for pose estimation')
 parser.add_argument('--calib_file', metavar='c', type=str, help='Path to calibration file')
 parser.add_argument('--dir_out_video', metavar='dvo', type=str, help='Path to folder to save output videos')
@@ -27,12 +28,43 @@ parser.add_argument('--skeleton', metavar='skel', type=str, default='coco_19', h
 parser.add_argument('--model_path', metavar='m', type=str, help='Path to the model to use for pose estimation')
 parser.add_argument('--DEBUG', metavar='d', type=bool, default=False, help='Debug Mode, Default: False')
 
-def csv_to_trc(df):
+def df_to_trc(df, trc_file, identifier, fps, n_frames, n_markers):
     """
-    Converts the DataFrame to a .trc file according to nomenclature used by Pose2Sim
-    :param df:
-    :return:
+    Converts the DataFrame to a .trc file according to nomenclature used by Pose2Sim.
+
+    Writes to trc file to given path.
+
+    :param df: DataFrame with 3D coordinates
     """
+    trc = TRCData()
+
+    trc['PathFileType'] = '4'
+    trc['DataFormat'] = '(X/Y/Z)'
+    trc['FileName'] = f'{identifier}.trc'
+    trc['DataRate'] = fps
+    trc['CameraRate'] = fps
+    trc['NumFrames'] = n_frames+1
+    trc['NumMarkers'] = n_markers
+    trc['Units'] = 'm'
+    trc['OrigDataRate'] = fps
+    trc['OrigDataStartFrame'] = 0
+    trc['OrigNumFrames'] = n_frames+1
+    trc['Frame#'] = [i for i in range(n_frames+1)]
+    trc['Time'] = [round(i / fps, 3) for i in range(n_frames+1)]
+
+    trc['Markers'] = df.columns.tolist()
+
+
+
+    for column in df.columns:
+        trc[column] = df[column].tolist()/1000
+
+    for i in range(n_frames+1):
+        trc[i] = [trc['Time'][i], df.iloc[i, :].tolist()]
+
+    trc.save(trc_file)
+
+    pass
 
 
 def get_column_names(joint_names):
@@ -40,14 +72,44 @@ def get_column_names(joint_names):
     Uses the list of joint names to create a list of column names for the DataFrame
 
     e.g. neck --> neck_x, neck_y, neck_z
-    :return:
+
+    Input: joint_names: List of joint names
+    Output: List of column names for x, y, and z axis
+    """
+    columns = []
+    """
+    # Old version might be used if x, y, z coordinates need to be split up in DataFrame
+    for joint in joint_names:
+        for axis in ['x', 'y', 'z']:
+            columns.append(f"{joint}_{axis}")"""
+
+    for joint in joint_names:
+        columns.append(joint)
+
+    return columns
+
+def add_to_dataframe(df, pose_result_3d):
+    """
+    Add 3D  Keypoints to DataFrame
+
+    Returns DataFrame with added 3D keypoints
     """
 
-    pass
+    """
+    # Old version might be used if x, y, z coordinates need to be split up in DataFrame
+    temp = []
+    for i in range(pose_result_3d.shape[1]):
+        temp.append(pose_result_3d[0][i][0])
+        temp.append(pose_result_3d[0][i][1])
+        temp.append(pose_result_3d[0][i][2])
 
-def get_column(df, pose_result_3d):
+    df.loc[len(df)] = temp"""
 
-def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_trc, model_path, skeleton='coco_19', DEBUG=False):
+    df.loc[len(df)] = pose_result_3d[0].tolist()
+
+    return df
+
+def metrabs_pose_estimation_3d(dir_video, calib_file, dir_out_video, dir_out_trc, model_path, identifier, skeleton='coco_19', DEBUG=False):
     """
     3D Pose estimaiton using Metrabs
 
@@ -102,10 +164,6 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_trc
             print("Could not open file")
             exit()
 
-
-
-
-
         # get intrinsics from calib file
         cam = re.search(r"cam\d*", video_name).group()
         intrinsic_matrix = None
@@ -124,10 +182,13 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_trc
 
         #Prepare DataFrame
 
-        df = pd.DataFrame(columns=get_colums(joint_names))
+        df = pd.DataFrame(columns=get_column_names(joint_names))
 
-        tot_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        progress = tqdm(total=tot_frames, desc=f"Processing {video_name}", position=0, leave=True)
+        n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        n_markers = len(joint_names)
+
+        progress = tqdm(total=n_frames, desc=f"Processing {video_name}", position=0, leave=True)
 
         while True:
             # Read frame from the webcam
@@ -156,11 +217,11 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_trc
 
             # Save detection's parameters
             bboxes = pred['boxes']
-            pose_result_3d = pred['poses3d']
+            pose_result_3d = pred['poses3d'].numpy()
 
             ################## Add to DataFrame #################
             # Add coordinates to Dataframe
-            get_column(df, pose_result_3d)
+            df = add_to_dataframe(df, pose_result_3d)
 
             frame_idx += 1
             progress.update(1)
@@ -174,6 +235,8 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_trc
 
         trc_file = os.path.join(dir_out_trc, f"{os.path.basename(video_name).split('.mp4')[0]}_0-{frame_idx}.trc")
 
+        df_to_trc(df, trc_file, identifier, fps, n_frames, n_markers)
+
 if __name__ == '__main__':
     args = parser.parse_args()
 
@@ -182,6 +245,7 @@ if __name__ == '__main__':
               "Starting debugging script.")
 
         if os.name == 'posix': # if running on WSL
+            args.identifier = "S20240501-115510_P01_T01"
             args.model_path = hub.load("/mnt/c/iDrink/metrabs_models/tensorflow/metrabs_eff2l_y4_384px_800k_28ds/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90")
             args.dir_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/recordings"
             args.dir_out_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/pose"
@@ -190,6 +254,7 @@ if __name__ == '__main__':
             args.skeleton = 'coco_19'
 
         else:
+            args.identifier = "S20240501-115510_P01_T01"
             args.model_path= hub.load(r"C:\iDrink\metrabs_models\tensorflow\metrabs_eff2l_y4_384px_800k_28ds\d8503163f1198d9d4ee97bfd9c7f316ad23f3d90")
             args.dir_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\recordings"
             args.dir_out_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\pose"
@@ -197,6 +262,7 @@ if __name__ == '__main__':
             args.calib_file = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_Calibration\Calib_S20240501-115510.toml"
             args.skeleton = 'coco_19'
 
-    metrabs_pose_estimation_3D(args.dir_video, args.calib_file, args.dir_out_video, args.dir_out_trc, args.model_path,
-                               args.skeleton, args.DEBUG)
+    metrabs_pose_estimation_3d(args.dir_video, args.calib_file, args.dir_out_video, args.dir_out_trc, args.model_path,
+                               args.identifier, args.skeleton, args.DEBUG)
+
     pass
