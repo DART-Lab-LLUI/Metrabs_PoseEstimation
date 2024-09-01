@@ -28,6 +28,40 @@ parser.add_argument('--skeleton', metavar='skel', type=str, default='coco_19', h
 parser.add_argument('--model_path', metavar='m', type=str, help='Path to the model to use for pose estimation')
 parser.add_argument('--DEBUG', metavar='d', type=bool, default=False, help='Debug Mode, Default: False')
 
+
+def filter_df(df_unfiltered, fs):
+    """
+    Use a butterworth-filter on the 3D-keypoints in the DF and return the filtered DF.
+
+    :param df: DataFrame with 3D coordinates
+    :param fs: Sampling frequency
+
+    :return: DataFrame with filtered 3D coordinates
+
+    """
+    from scipy.signal import butter, sosfiltfilt
+
+    df filtered = pandas.DataFrane(columns=df_unfiltered.columns)
+
+    cutoff = 5
+    order = 2  # Desired order 5. Because of filtfilt, half of that needs to be given. --> filtfilt doubles the order
+
+    nyquist = 0.5 * fs
+
+    if cutoff >= nyquist:
+        print(f"Warning: Cutoff frequency {cutoff} is higher than Nyquist frequency {nyquist}.")
+        print("Filtering with Nyquist frequency.")
+        cutoff = int(nyquist - 1)
+
+    normal_cutoff = cutoff / nyquist
+
+
+    sos = butter(order, normal_cutoff, btype="low", analog=False, output="sos")
+    filtered_data = sosfiltfilt(sos, data)
+
+
+    return df_filtered
+
 def df_to_trc(df, trc_file, identifier, fps, n_frames, n_markers):
     """
     Converts the DataFrame to a .trc file according to nomenclature used by Pose2Sim.
@@ -196,6 +230,9 @@ def metrabs_pose_estimation_3d(video_file, calib_file, dir_out_video, dir_out_tr
     # Release the VideoCapture object and close progressbar
     cap.release()
     progress.close()
+
+    filter_df(df, fps)
+
     if not os.path.exists(dir_out_trc):
         os.makedirs(dir_out_trc)
     trc_file = os.path.join(dir_out_trc, f"{os.path.basename(os.path.basename(video_file)).split('.mp4')[0]}_0-{frame_idx}.trc")
@@ -227,5 +264,3 @@ if __name__ == '__main__':
 
     metrabs_pose_estimation_3d(args.video_file, args.calib_file, args.dir_out_video, args.dir_out_trc, args.model_path,
                                args.identifier, args.skeleton, args.DEBUG)
-
-    pass
