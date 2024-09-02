@@ -4,22 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e0cb77db-031d-45b2-b0ee-78c3f62250cf" name="Changes" comment="Butterworth Filter implemented.&#10;&#10;Also added some verbosity on 2 levels.&#10;&#10;Other TODOs:&#10;- Video Output">
-      <change afterPath="$PROJECT_DIR$/.idea/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/Metrabs_PoseEstimation.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/metrabsPose2D_pt.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/metrabs_models/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90.descriptor.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/metrabs_models/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90/saved_model.pb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/metrabs_models/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90/variables/variables.data-00000-of-00001" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/metrabs_models/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90/variables/variables.index" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/metrabsPose2D_TF.py" beforeDir="false" afterPath="$PROJECT_DIR$/metrabsPose2D_TF.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/metrabsPose3D_TF.py" beforeDir="false" afterPath="$PROJECT_DIR$/metrabsPose3D_TF.py" afterDir="false" />
-    </list>
+    <list default="true" id="e0cb77db-031d-45b2-b0ee-78c3f62250cf" name="Changes" comment="MetrabsPose2D with Pytorch&#10;&#10;Other TODOs:&#10;- Video Output" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -104,7 +89,7 @@
       <workItem from="1725269615251" duration="479000" />
       <workItem from="1725270189103" duration="222000" />
       <workItem from="1725270432142" duration="1077000" />
-      <workItem from="1725278112105" duration="2696000" />
+      <workItem from="1725278112105" duration="3448000" />
     </task>
     <task id="LOCAL-00001" summary="minor changes">
       <option name="closed" value="true" />
@@ -170,7 +155,15 @@
       <option name="project" value="LOCAL" />
       <updated>1725266171140</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="MetrabsPose2D with Pytorch&#10;&#10;Other TODOs:&#10;- Video Output">
+      <option name="closed" value="true" />
+      <created>1725281112102</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1725281112102</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -196,19 +189,20 @@
     <MESSAGE value="Vhange to Single-Video processing&#10;&#10;Next, Verbose and Filtering will be added" />
     <MESSAGE value="Filtering is started.&#10;&#10;Need to get Data into right format for filtering function.&#10;&#10;Other TODOs:&#10;- Verbosity&#10;- Video Output" />
     <MESSAGE value="Butterworth Filter implemented.&#10;&#10;Also added some verbosity on 2 levels.&#10;&#10;Other TODOs:&#10;- Video Output" />
-    <option name="LAST_COMMIT_MESSAGE" value="Butterworth Filter implemented.&#10;&#10;Also added some verbosity on 2 levels.&#10;&#10;Other TODOs:&#10;- Video Output" />
+    <MESSAGE value="MetrabsPose2D with Pytorch&#10;&#10;Other TODOs:&#10;- Video Output" />
+    <option name="LAST_COMMIT_MESSAGE" value="MetrabsPose2D with Pytorch&#10;&#10;Other TODOs:&#10;- Video Output" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/metrabsPose2D_TF.py</url>
-          <line>153</line>
+          <line>179</line>
           <option name="timeStamp" value="31" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/metrabsPose3D_TF.py</url>
-          <line>195</line>
+          <line>197</line>
           <option name="timeStamp" value="35" />
         </line-breakpoint>
       </breakpoints>
