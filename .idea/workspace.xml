@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="e0cb77db-031d-45b2-b0ee-78c3f62250cf" name="Changes" comment="Butterworth Filter implemented.&#10;&#10;Also added some verbosity on 2 levels.&#10;&#10;Other TODOs:&#10;- Video Output">
+      <change afterPath="$PROJECT_DIR$/.idea/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/Metrabs_PoseEstimation.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/metrabsPose2D_pt.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/metrabs_models/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90.descriptor.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/metrabs_models/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90/saved_model.pb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/metrabs_models/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90/variables/variables.data-00000-of-00001" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/metrabs_models/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90/variables/variables.index" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/metrabsPose2D_TF.py" beforeDir="false" afterPath="$PROJECT_DIR$/metrabsPose2D_TF.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/metrabsPose3D_TF.py" beforeDir="false" afterPath="$PROJECT_DIR$/metrabsPose3D_TF.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Jupyter Notebook" />
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;j-ullrich&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/DART-Lab-LLUI/Metrabs_PoseEstimation.git&quot;,
+    &quot;accountId&quot;: &quot;76680e5b-a6a9-410e-aae8-16320043c421&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
+  <component name="ProjectId" id="2kxfJsRKt0dIT9FP2RXv17kPzlJ" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.efficientnet.executor": "Debug",
+    "Python.metrabsPose2D_TF.executor": "Debug",
+    "Python.metrabsPose2D_pt.executor": "Debug",
+    "Python.metrabsPose3D_TF.executor": "Debug",
+    "Python.person_detector.executor": "Debug",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "C:/GitHub/Metrabs_PoseEstimation",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "org.jetbrains.plugins.notebooks.jupyter.connections.configuration.JupyterServerConfigurable",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-1d06a55b98c1-0b3e54e931b4-JavaScript-PY-241.18034.82" />
+        <option value="bundled-python-sdk-975db3bf15a3-2767605e8bc2-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-241.18034.82" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="e0cb77db-031d-45b2-b0ee-78c3f62250cf" name="Changes" comment="" />
+      <created>1724230079356</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1724230079356</updated>
+      <workItem from="1724230080478" duration="1446000" />
+      <workItem from="1724231658035" duration="4295000" />
+      <workItem from="1724664208034" duration="42000" />
+      <workItem from="1724932367659" duration="4384000" />
+      <workItem from="1724947184031" duration="4332000" />
+      <workItem from="1725002626897" duration="9457000" />
+      <workItem from="1725197143625" duration="2652000" />
+      <workItem from="1725258694076" duration="7602000" />
+      <workItem from="1725267313680" duration="2221000" />
+      <workItem from="1725269615251" duration="479000" />
+      <workItem from="1725270189103" duration="222000" />
+      <workItem from="1725270432142" duration="1077000" />
+      <workItem from="1725278112105" duration="2696000" />
+    </task>
+    <task id="LOCAL-00001" summary="minor changes">
+      <option name="closed" value="true" />
+      <created>1724231532759</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1724231532759</updated>
+    </task>
+    <task id="LOCAL-00002" summary="debugging&#10;&#10;Next version could use metrabs batch processing to process videofile">
+      <option name="closed" value="true" />
+      <created>1724233890390</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1724233890390</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Started Work on 3D Pose Estimation">
+      <option name="closed" value="true" />
+      <created>1724940334674</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1724940334674</updated>
+    </task>
+    <task id="LOCAL-00004" summary="3D HPE full pipeline, debugging">
+      <option name="closed" value="true" />
+      <created>1725021698804</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1725021698804</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Pipeline works now. But iterates thorugh all videos in a folder.&#10;&#10;Gonna change that now">
+      <option name="closed" value="true" />
+      <created>1725024832242</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1725024832242</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Vhange to Single-Video processing&#10;&#10;Next, Verbose and Filtering will be added">
+      <option name="closed" value="true" />
+      <created>1725025954215</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1725025954215</updated>
+    </task>
+    <task id="LOCAL-00007" summary="Filtering is started.&#10;&#10;Need to get Data into right format for filtering function.&#10;&#10;Other TODOs:&#10;- Verbosity&#10;- Video Output">
+      <option name="closed" value="true" />
+      <created>1725218961086</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1725218961086</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Butterworth Filter implemented.&#10;&#10;Also added some verbosity on 2 levels.&#10;&#10;Other TODOs:&#10;- Video Output">
+      <option name="closed" value="true" />
+      <created>1725266171140</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1725266171140</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="minor changes" />
+    <MESSAGE value="debugging&#10;&#10;Next version could use metrabs batch processing to process videofile" />
+    <MESSAGE value="Started Work on 3D Pose Estimation" />
+    <MESSAGE value="3D HPE full pipeline, debugging" />
+    <MESSAGE value="Pipeline works now. But iterates thorugh all videos in a folder.&#10;&#10;Gonna change that now" />
+    <MESSAGE value="Vhange to Single-Video processing&#10;&#10;Next, Verbose and Filtering will be added" />
+    <MESSAGE value="Filtering is started.&#10;&#10;Need to get Data into right format for filtering function.&#10;&#10;Other TODOs:&#10;- Verbosity&#10;- Video Output" />
+    <MESSAGE value="Butterworth Filter implemented.&#10;&#10;Also added some verbosity on 2 levels.&#10;&#10;Other TODOs:&#10;- Video Output" />
+    <option name="LAST_COMMIT_MESSAGE" value="Butterworth Filter implemented.&#10;&#10;Also added some verbosity on 2 levels.&#10;&#10;Other TODOs:&#10;- Video Output" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/metrabsPose2D_TF.py</url>
+          <line>153</line>
+          <option name="timeStamp" value="31" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/metrabsPose3D_TF.py</url>
+          <line>195</line>
+          <option name="timeStamp" value="35" />
+        </line-breakpoint>
+      </breakpoints>
+      <default-breakpoints>
+        <breakpoint type="python-exception">
+          <properties notifyOnTerminate="true" exception="BaseException">
+            <option name="notifyOnTerminate" value="true" />
+          </properties>
+        </breakpoint>
+      </default-breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/metrabsPose3D_TF_py$efficientnet.coverage" NAME="efficientnet Coverage Results" MODIFIED="1725278174935" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/metrabs/metrabs_pytorch/backbones" />
+    <SUITE FILE_PATH="coverage/Metrabs_PoseEstimation$metrabsPose2D_TF.coverage" NAME="metrabsPose2D_TF Coverage Results" MODIFIED="1724235403116" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/metrabsPose3D_TF_py$person_detector.coverage" NAME="person_detector Coverage Results" MODIFIED="1725279968721" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/metrabs_pytorch/multiperson" />
+    <SUITE FILE_PATH="coverage/metrabsPose3D_TF_py$metrabsPose2D_pt.coverage" NAME="metrabsPose2D_pt Coverage Results" MODIFIED="1725280853103" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/metrabsPose3D_TF_py$metrabsPose3D_TF.coverage" NAME="metrabsPose3D_TF Coverage Results" MODIFIED="1725269764939" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+  </component>
+</project>
