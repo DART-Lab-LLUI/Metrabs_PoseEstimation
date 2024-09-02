@@ -26,10 +26,11 @@ parser.add_argument('--dir_out_video', metavar='dvo', type=str, help='Path to fo
 parser.add_argument('--dir_out_trc', metavar='dtrc', type=str, help='Path to folder to save output trc files')
 parser.add_argument('--skeleton', metavar='skel', type=str, default='coco_19', help='Skeleton to use for pose estimation, Default: coco_19')
 parser.add_argument('--model_path', metavar='m', type=str, help='Path to the model to use for pose estimation')
+parser.add_argument('--verbose', metavar='v', type=int, default=1, help='Verbose Mode (0, 1, 2), Default: 1')
 parser.add_argument('--DEBUG', metavar='d', type=bool, default=False, help='Debug Mode, Default: False')
 
 
-def filter_df(df_unfiltered, fs):
+def filter_df(df_unfiltered, fs, verbose, normcutoff=False):
     """
     Use a butterworth-filter on the 3D-keypoints in the DF and return the filtered DF.
 
@@ -41,7 +42,7 @@ def filter_df(df_unfiltered, fs):
     """
     from scipy.signal import butter, sosfiltfilt
 
-    df filtered = pandas.DataFrane(columns=df_unfiltered.columns)
+    df_filtered = pd.DataFrame(columns=df_unfiltered.columns)
 
     cutoff = 5
     order = 2  # Desired order 5. Because of filtfilt, half of that needs to be given. --> filtfilt doubles the order
@@ -49,20 +50,41 @@ def filter_df(df_unfiltered, fs):
     nyquist = 0.5 * fs
 
     if cutoff >= nyquist:
-        print(f"Warning: Cutoff frequency {cutoff} is higher than Nyquist frequency {nyquist}.")
-        print("Filtering with Nyquist frequency.")
+        if verbose >= 1:
+            print(f"Warning: Cutoff frequency {cutoff} is higher than Nyquist frequency {nyquist}.")
+            print("Filtering with Nyquist frequency.")
         cutoff = int(nyquist - 1)
 
-    normal_cutoff = cutoff / nyquist
+
+    if normcutoff:
+        cutoff = cutoff / nyquist
+    else:
+        sos = butter(order, cutoff, btype="low", analog=False, output="sos", fs=fs)
+
+    if verbose >= 2:
+        print(f"Filtering 3D keypoints:\n"
+              f"Filter: Butterworth\n"
+              f"Order: {order}\n"
+              f"Sampling frequency: {fs} Hz\n"
+              f"cutoff frequency of {cutoff} Hz")
 
 
-    sos = butter(order, normal_cutoff, btype="low", analog=False, output="sos")
-    filtered_data = sosfiltfilt(sos, data)
+    if verbose >= 1:
+        progress = tqdm(total=len(df_unfiltered.columns), desc="Filtering 3D keypoints", position=0, leave=True)
 
+    for column in df_unfiltered.columns:
+        data = np.array(df_unfiltered[column].tolist())
+        df_filtered[column] = sosfiltfilt(sos, data, axis=0).tolist()
+
+        if verbose >= 1:
+            progress.update(1)
+
+    if verbose >= 1:
+        progress.close()
 
     return df_filtered
 
-def df_to_trc(df, trc_file, identifier, fps, n_frames, n_markers):
+def df_to_trc(df, trc_file, identifier, fps, n_frames, n_markers, verbose=1):
     """
     Converts the DataFrame to a .trc file according to nomenclature used by Pose2Sim.
 
@@ -71,6 +93,9 @@ def df_to_trc(df, trc_file, identifier, fps, n_frames, n_markers):
     :param df: DataFrame with 3D coordinates
     """
     trc = TRCData()
+
+    if verbose >= 1:
+        print(f"Writing .trc file {os.path.basename(trc_file)}")
 
     trc['PathFileType'] = '4'
     trc['DataFormat'] = '(X/Y/Z)'
@@ -92,15 +117,25 @@ def df_to_trc(df, trc_file, identifier, fps, n_frames, n_markers):
     for column in df.columns:
         trc[column] = df[column].tolist()
 
+    if verbose >= 2:
+        print(f'columns added to {os.path.basename(trc_file)}')
+
+    for column in tqdm(df.columns, desc="Writing .trc file", position=0, leave=True):
+        trc[column] = df[column].tolist()
+
     for i in range(n_frames):
         trc[i] = [trc['Time'][i], df.iloc[i, :].tolist()]
 
+    if verbose >= 2:
+        print(f'Timestamps added to {os.path.basename(trc_file)}')
+
+
     trc.save(trc_file)
+    if verbose >= 1:
+        print(f"Saved .trc file {os.path.basename(trc_file)}")
 
-    pass
 
-
-def get_column_names(joint_names):
+def get_column_names(joint_names, verbose=1):
     """
     Uses the list of joint names to create a list of column names for the DataFrame
 
@@ -119,6 +154,9 @@ def get_column_names(joint_names):
     for joint in joint_names:
         columns.append(joint)
 
+    if verbose >= 2:
+        print(f'Columns created: {columns}')
+
     return columns
 
 def add_to_dataframe(df, pose_result_3d):
@@ -136,7 +174,7 @@ def add_to_dataframe(df, pose_result_3d):
 
     return df
 
-def metrabs_pose_estimation_3d(video_file, calib_file, dir_out_video, dir_out_trc, model_path, identifier, skeleton='coco_19', DEBUG=False):
+def metrabs_pose_estimation_3d(video_file, calib_file, dir_out_video, dir_out_trc, model_path, identifier, skeleton='coco_19', verbose=1, DEBUG=False):
     """
     3D Pose estimaiton using Metrabs
 
@@ -156,7 +194,8 @@ def metrabs_pose_estimation_3d(video_file, calib_file, dir_out_video, dir_out_tr
     """
 
     try:
-        print("loading HPE model")
+        if verbose >=1:
+            print("loading HPE model")
         model = hub.load(model_path)
     except:
         tmp = os.path.join(os.getcwd(), 'metrabs_models')
@@ -199,7 +238,13 @@ def metrabs_pose_estimation_3d(video_file, calib_file, dir_out_video, dir_out_tr
     n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS)
     n_markers = len(joint_names)
-    progress = tqdm(total=n_frames, desc=f"Processing {os.path.basename(video_file)}", position=0, leave=True)
+    if verbose >=2:
+        print(f"Number of frames: {n_frames}")
+        print(f"FPS: {fps}")
+        print(f"Number of markers: {n_markers}")
+
+    if verbose>=1:
+        progress = tqdm(total=n_frames, desc=f"Processing {os.path.basename(video_file)}", position=0, leave=True)
     while True:
         # Read frame from the webcam
         ret, frame = cap.read()
@@ -226,17 +271,28 @@ def metrabs_pose_estimation_3d(video_file, calib_file, dir_out_video, dir_out_tr
         # Add coordinates to Dataframe
         df = add_to_dataframe(df, pose_result_3d)
         frame_idx += 1
-        progress.update(1)
+        if verbose >=1:
+            progress.update(1)
     # Release the VideoCapture object and close progressbar
     cap.release()
-    progress.close()
+    if verbose >=1:
+        progress.close()
 
-    filter_df(df, fps)
+    if verbose >= 2:
+        print(f'Call filtering function')
+    df_filt = filter_df(df, fps, verbose)
 
     if not os.path.exists(dir_out_trc):
         os.makedirs(dir_out_trc)
-    trc_file = os.path.join(dir_out_trc, f"{os.path.basename(os.path.basename(video_file)).split('.mp4')[0]}_0-{frame_idx}.trc")
-    df_to_trc(df, trc_file, identifier, fps, n_frames, n_markers)
+
+    trc_file_filt = os.path.join(dir_out_trc, f"{os.path.basename(os.path.basename(video_file)).split('.mp4')[0]}_0-{frame_idx}_filt_iDrinkbutter.trc")
+    trc_file_unfilt = os.path.join(dir_out_trc, f"{os.path.basename(os.path.basename(video_file)).split('.mp4')[0]}_0-{frame_idx}_unfilt_iDrink.trc")
+
+    df_to_trc(df_filt, trc_file_filt, identifier, fps, n_frames, n_markers)
+    df_to_trc(df, trc_file_unfilt, identifier, fps, n_frames, n_markers)
+
+    if verbose >= 2:
+        print(f'3D Pose Estimation done and .trc files saved to {dir_out_trc}')
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -249,18 +305,20 @@ if __name__ == '__main__':
             args.identifier = "S20240501-115510_P01_T01"
             args.model_path = hub.load("/mnt/c/iDrink/metrabs_models/tensorflow/metrabs_eff2l_y4_384px_800k_28ds/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90")
             args.video_file = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/recordings/cam1_trial_44_R_affected.mp4"
-            args.dir_out_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/pose-3d"
-            args.dir_out_trc = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/pose"
+            args.dir_out_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/pose"
+            args.dir_out_trc = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/pose-3d"
             args.calib_file = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_Calibration/Calib_S20240501-115510.toml"
             args.skeleton = 'coco_19'
+            args.verbose = 1
         else:
             args.identifier = "S20240501-115510_P01_T01"
             args.model_path= hub.load(r"C:\iDrink\metrabs_models\tensorflow\metrabs_eff2l_y4_384px_800k_28ds\d8503163f1198d9d4ee97bfd9c7f316ad23f3d90")
             args.video_file = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\recordings\cam1_trial_44_R_affected.mp4"
-            args.dir_out_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\pose-3d"
-            args.dir_out_trc = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\pose"
+            args.dir_out_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\pose"
+            args.dir_out_trc = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\pose-3d"
             args.calib_file = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_Calibration\Calib_S20240501-115510.toml"
             args.skeleton = 'coco_19'
+            args.verbose = 1
 
     metrabs_pose_estimation_3d(args.video_file, args.calib_file, args.dir_out_video, args.dir_out_trc, args.model_path,
-                               args.identifier, args.skeleton, args.DEBUG)
+                               args.identifier, args.skeleton, args.verbose, args.DEBUG)
