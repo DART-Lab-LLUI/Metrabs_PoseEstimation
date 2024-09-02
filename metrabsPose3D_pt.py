@@ -6,24 +6,64 @@ import sys
 import cv2
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-import tensorflow_hub as hub
+import simplepyutils as spu
 import toml
+import torch
+import torchvision.io
 from tqdm import tqdm
 from trc import TRCData
 
-parser = argparse.ArgumentParser(description='Metrabs 2D Pose Estimation for iDrink using Tensorflow')
-parser.add_argument('--identifier', metavar='id', type=str, help='Trial Identifier')
+import metrabs_pytorch.backbones.efficientnet as effnet_pt
+import metrabs_pytorch.models.metrabs as metrabs_pt
+import posepile.joint_info
+from metrabs_pytorch.multiperson import multiperson_model
+from metrabs_pytorch.util import get_config
+
+parser = argparse.ArgumentParser(description='Metrabs 2D Pose Estimation for iDrink using Pytorch')
 parser.add_argument('--video_file', metavar='dvi', type=str,
-                    help='Path to folder containing videos for pose estimation')
-parser.add_argument('--calib_file', metavar='c', type=str, help='Path to calibration file')
-parser.add_argument('--dir_out_video', metavar='dvo', type=str, help='Path to folder to save output videos')
-parser.add_argument('--dir_out_trc', metavar='dtrc', type=str, help='Path to folder to save output trc files')
+                    help='Path to video-file for pose estimation')
+parser.add_argument('--calib_file', metavar='c', type=str,
+                    help='Path to calibration file')
+parser.add_argument('--dir_out_video', metavar='dvo', type=str,
+                    help='Path to folder to save output videos')
+parser.add_argument('--dir_out_trc', metavar='dtrc', type=str,
+                    help='Path to folder to save output trc files')
 parser.add_argument('--skeleton', metavar='skel', type=str, default='coco_19',
                     help='Skeleton to use for pose estimation, Default: coco_19')
-parser.add_argument('--model_path', metavar='m', type=str, help='Path to the model to use for pose estimation')
+parser.add_argument('--model_path', metavar='m', type=str,
+                    default=os.path.join(os.getcwd(), 'metrabs_models'),
+                    help=f'Path to the model to use for pose estimation. \n'
+                         f'Default: {os.path.join(os.getcwd(), "metrabs_models")}')
 parser.add_argument('--verbose', metavar='v', type=int, default=1, help='Verbose Mode (0, 1, 2), Default: 1')
 parser.add_argument('--DEBUG', metavar='d', type=bool, default=False, help='Debug Mode, Default: False')
+
+
+def load_multiperson_model(model_path):
+    model_pytorch = load_crop_model(model_path)
+    skeleton_infos = spu.load_pickle(f'{model_path}/skeleton_infos.pkl')
+    joint_transform_matrix = np.load(f'{model_path}/joint_transform_matrix.npy')
+
+    with torch.device('cuda'):
+        return multiperson_model.Pose3dEstimator(
+            model_pytorch.cuda(), skeleton_infos, joint_transform_matrix)
+
+
+def load_crop_model(model_path):
+    cfg = get_config()
+    ji_np = np.load(f'{model_path}/joint_info.npz')
+    ji = posepile.joint_info.JointInfo(ji_np['joint_names'], ji_np['joint_edges'])
+    backbone_raw = getattr(effnet_pt, f'efficientnet_v2_{cfg.efficientnet_size}')()
+    preproc_layer = effnet_pt.PreprocLayer()
+    backbone = torch.nn.Sequential(preproc_layer, backbone_raw.features)
+    model = metrabs_pt.Metrabs(backbone, ji)
+    model.eval()
+
+    inp = torch.zeros((1, 3, cfg.proc_side, cfg.proc_side), dtype=torch.float32)
+    intr = torch.eye(3, dtype=torch.float32)[np.newaxis]
+
+    model((inp, intr))
+    model.load_state_dict(torch.load(f'{model_path}/ckpt.pt'))
+    return model
 
 
 def filter_df(df_unfiltered, fs, verbose, normcutoff=False):
@@ -170,38 +210,18 @@ def add_to_dataframe(df, pose_result_3d):
 
 def metrabs_pose_estimation_3d(video_file, calib_file, dir_out_video, dir_out_trc, model_path, identifier,
                                skeleton='coco_19', verbose=1, DEBUG=False):
-    """
-    3D Pose estimaiton using Metrabs
 
-    The coordinates are saved into .trc files according to the Pose2Sim nomenclature.
+    get_config(f'{model_path}/config.yaml')
 
-    This script uses the tensorflow version of Metrabs.
+    multiperson_model_pt = load_multiperson_model(model_path).cuda()
+    joint_names = multiperson_model_pt.per_skeleton_joint_names[skeleton]
+    joint_edges = multiperson_model_pt.per_skeleton_joint_edges[skeleton].cpu().numpy()
 
+    # Check if the directory exists, if not create it
+    if not os.path.exists(dir_out_video):
+        os.makedirs(dir_out_video)
 
-    :param in_video:
-    :param out_video:
-    :param out_json:
-    :param skeleton:
-    :param writevideofiles:
-    :param filter_2d:
-    :param DEBUG:
-    :return:
-    """
-
-    try:
-        if verbose >= 1:
-            print("loading HPE model")
-        model = hub.load(model_path)
-    except:
-        tmp = os.path.join(os.getcwd(), 'metrabs_models')
-        # tmp = input("Loading model failed. The model will be donwloaded. Please give a path to save the model.") ##If we want to give the choice of the path to the user
-        if not os.path.exists(tmp):
-            os.makedirs(tmp)
-
-        # Add path to the environment variable --> This is necessary to save the model in the given path
-        os.environ['TFHUB_CACHE_DIR'] = tmp
-        model = hub.load(
-            'https://bit.ly/metrabs_l')  # To load the model from the internet and save it in a given tmp folder
+    calib = toml.load(calib_file)
 
     # Check if the directory exists, if not create it
     if not os.path.exists(dir_out_video):
@@ -223,56 +243,48 @@ def metrabs_pose_estimation_3d(video_file, calib_file, dir_out_video, dir_out_tr
     distortions = None
     for key in calib.keys():
         if calib.get(key).get("name") == cam:
-            intrinsic_matrix = tf.constant(calib.get(key).get("matrix"), dtype=tf.float32)
-            distortions = tf.constant(calib.get(key).get("distortions"), dtype=tf.float32)
-    joint_names = model.per_skeleton_joint_names[skeleton].numpy().astype(str)
-    joint_edges = model.per_skeleton_joint_edges[skeleton].numpy()
+            intrinsic_matrix = calib.get(key).get("matrix")
+            distortions = calib.get(key).get("distortions")
+    print(f"Current Video: {os.path.basename(video_file)}")
     # Initializing variables for the loop
     frame_idx = 0
+
+
     # Prepare DataFrame
     df = pd.DataFrame(columns=get_column_names(joint_names))
     n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS)
     n_markers = len(joint_names)
+
     if verbose >= 2:
         print(f"Number of frames: {n_frames}")
         print(f"FPS: {fps}")
         print(f"Number of markers: {n_markers}")
-
-    if verbose >= 1:
-        progress = tqdm(total=n_frames, desc=f"Processing {os.path.basename(video_file)}", position=0, leave=True)
-    while True:
-        # Read frame from the webcam
-        ret, frame = cap.read()
-        # If frame is read correctly ret is True
-        if not ret:
-            break
-        # Stop setting for development
-        if DEBUG:
-            if frame_idx == 30:
-                break
-        # convert Image t0 jpeg
-        _, frame = cv2.imencode('.jpg', frame)
-        frame = frame.tobytes()
-        # covnert jpeg to tensor and run prediction
-        frame = tf.image.decode_jpeg(frame, channels=3)
-        ##############################################
-        ################## DETECTION #################
-        # Perform inference on the frame
-        pred = model.detect_poses(frame, intrinsic_matrix=intrinsic_matrix, skeleton=skeleton)
-        # Save detection's parameters
-        bboxes = pred['boxes']
-        pose_result_3d = pred['poses3d'].numpy()
-        ################## Add to DataFrame #################
-        # Add coordinates to Dataframe
-        df = add_to_dataframe(df, pose_result_3d)
-        frame_idx += 1
-        if verbose >= 1:
-            progress.update(1)
-    # Release the VideoCapture object and close progressbar
+    tot_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     cap.release()
-    if verbose >= 1:
-        progress.close()
+
+    if verbose >=1:
+        progress = tqdm(total=tot_frames, desc=f"Processing {os.path.basename(video_file)}", position=0, leave=True)
+    with torch.inference_mode(), torch.device('cuda'):
+        frames_in, _, _ = torchvision.io.read_video(video_file, output_format='TCHW')
+        for frame_idx, frame in enumerate(frames_in):
+            pred = multiperson_model_pt.detect_poses(frame, skeleton=skeleton, detector_threshold=0.01,
+                                                     suppress_implausible_poses=False, max_detections=1,
+                                                     intrinsic_matrix=torch.FloatTensor(intrinsic_matrix),
+                                                     distortion_coeffs=torch.FloatTensor(distortions), num_aug=2)
+            # Save detection's parameters
+            bboxes = pred['boxes'].cpu().numpy()
+            pose_result_3d = pred['poses3d'].cpu().numpy()
+
+            df = add_to_dataframe(df, pose_result_3d)
+
+            frame_idx += 1
+            if verbose >= 1:
+                progress.update(1)
+        # Release the VideoCapture object and close progressbar
+
+        if verbose >= 1:
+            progress.close()
 
     if verbose >= 2:
         print(f'Call filtering function')
@@ -302,24 +314,26 @@ if __name__ == '__main__':
 
         if os.name == 'posix':  # if running on WSL
             args.identifier = "S20240501-115510_P01_T01"
-            args.model_path = hub.load(
-                "/mnt/c/iDrink/metrabs_models/tensorflow/metrabs_eff2l_y4_384px_800k_28ds/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90")
+            args.model_path = "/mnt/c/iDrink/metrabs_models/pytorch/metrabs_eff2l_384px_800k_28ds_pytorch"
             args.video_file = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/recordings/cam1_trial_44_R_affected.mp4"
             args.dir_out_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/pose"
             args.dir_out_trc = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/pose-3d"
             args.calib_file = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_Calibration/Calib_S20240501-115510.toml"
             args.skeleton = 'coco_19'
+            args.filter_2d = False
             args.verbose = 1
+
         else:
             args.identifier = "S20240501-115510_P01_T01"
-            args.model_path = hub.load(
-                r"C:\iDrink\metrabs_models\tensorflow\metrabs_eff2l_y4_384px_800k_28ds\d8503163f1198d9d4ee97bfd9c7f316ad23f3d90")
+            args.model_path = r"C:\iDrink\metrabs_models\pytorch\metrabs_eff2l_384px_800k_28ds_pytorch"
             args.video_file = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\recordings\cam1_trial_44_R_affected.mp4"
             args.dir_out_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\pose"
             args.dir_out_trc = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\pose-3d"
             args.calib_file = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_Calibration\Calib_S20240501-115510.toml"
             args.skeleton = 'coco_19'
+            args.filter_2d = False
             args.verbose = 1
 
     metrabs_pose_estimation_3d(args.video_file, args.calib_file, args.dir_out_video, args.dir_out_trc, args.model_path,
                                args.identifier, args.skeleton, args.verbose, args.DEBUG)
+    pass

@@ -1,38 +1,22 @@
 import argparse
-import sys
-import os
-import glob
-import re
-import toml
-import time
 import json
-
-import numpy as np
+import os
+import re
+import sys
 
 import cv2
-from tqdm import tqdm
-
-import toml
-import glob
-import re
-import cameralib
 import numpy as np
-import posepile.joint_info
-import poseviz
 import simplepyutils as spu
+import toml
 import torch
 import torchvision.io
-import poseviz
-import cameralib
+from tqdm import tqdm
 
 import metrabs_pytorch.backbones.efficientnet as effnet_pt
 import metrabs_pytorch.models.metrabs as metrabs_pt
+import posepile.joint_info
 from metrabs_pytorch.multiperson import multiperson_model
 from metrabs_pytorch.util import get_config
-
-
-
-
 
 parser = argparse.ArgumentParser(description='Metrabs 2D Pose Estimation for iDrink using Pytorch')
 parser.add_argument('--dir_video', metavar='dvi', type=str,
@@ -79,6 +63,7 @@ def load_crop_model(model_path):
     model.load_state_dict(torch.load(f'{model_path}/ckpt.pt'))
     return model
 
+
 def pose_data_to_json(pose_data_samples):
     """
     Write 2D Keypoints to Json File
@@ -110,14 +95,16 @@ def pose_data_to_json(pose_data_samples):
 
     return json_data
 
+
 def json_out(pred, id, json_dir, video):
     json_name = os.path.join(json_dir, f"{os.path.basename(video).split('.mp4')[0]}_{id:06d}.json")
     json_file = open(json_name, "w")
     json.dump(pose_data_to_json(pred), json_file, indent=6)
     id += 1
 
-def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_json, model_path, skeleton='coco_19', DEBUG=False):
 
+def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_json, model_path, skeleton='coco_19',
+                               DEBUG=False):
     get_config(f'{model_path}/config.yaml')
 
     multiperson_model_pt = load_multiperson_model(model_path).cuda()
@@ -183,14 +170,19 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_jso
             frames_in, _, _ = torchvision.io.read_video(filepath, output_format='TCHW')
 
             for frame_idx, frame in enumerate(frames_in):
-
-                pred = multiperson_model_pt.detect_poses(frame, skeleton=skeleton,
+                """pred = multiperson_model_pt.detect_poses(frame, skeleton=skeleton,
                                                          intrinsic_matrix=torch.FloatTensor(intrinsic_matrix),
-                                                         distortion_coeffs=torch.FloatTensor(distortions))
+                                                         distortion_coeffs=torch.FloatTensor(distortions))"""
+                pred = multiperson_model_pt.detect_poses(frame, skeleton=skeleton, detector_threshold=0.01,
+                                                         suppress_implausible_poses=False, max_detections=1,
+                                                         intrinsic_matrix=torch.FloatTensor(intrinsic_matrix),
+                                                         distortion_coeffs=torch.FloatTensor(distortions), num_aug=2)
+
+
 
                 # Save detection's parameters
                 bboxes = pred['boxes'].cpu().numpy()
-                pose_result_2d = pred['poses3d'].cpu().numpy()
+                pose_result_2d = pred['poses2d'].cpu().numpy()
 
                 ################## JSON Output #################
                 # Add track id (useful for multiperson tracking)
@@ -203,6 +195,7 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_jso
             cap.release()
             progress.close()
 
+
 if __name__ == '__main__':
     args = parser.parse_args()
 
@@ -210,7 +203,7 @@ if __name__ == '__main__':
         print("Debug Mode is activated\n"
               "Starting debugging script.")
 
-        if os.name == 'posix': # if running on WSL
+        if os.name == 'posix':  # if running on WSL
             args.model_path = "/mnt/c/iDrink/metrabs_models/pytorch/metrabs_eff2l_384px_800k_28ds_pytorch"
             args.dir_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/recordings"
             args.dir_out_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/pose"
@@ -220,7 +213,7 @@ if __name__ == '__main__':
             args.filter_2d = False
 
         else:
-            args.model_path= r"C:\iDrink\metrabs_models\pytorch\metrabs_eff2l_384px_800k_28ds_pytorch"
+            args.model_path = r"C:\iDrink\metrabs_models\pytorch\metrabs_eff2l_384px_800k_28ds_pytorch"
             args.dir_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\recordings"
             args.dir_out_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\pose"
             args.dir_out_json = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\pose"

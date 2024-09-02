@@ -1,21 +1,16 @@
 import argparse
-import sys
-import os
-import glob
-import re
-import toml
-import time
 import json
-
-import numpy as np
+import os
+import re
+import sys
 
 import cv2
-from tqdm import tqdm
-
-import tensorflow_hub as hub
+import numpy as np
 import tensorflow as tf
+import tensorflow_hub as hub
 import tensorflow_io as tfio
-
+import toml
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Metrabs 2D Pose Estimation for iDrink using Tensorflow')
 parser.add_argument('--dir_video', metavar='dvi', type=str,
@@ -34,6 +29,7 @@ parser.add_argument('--model_path', metavar='m', type=str,
                          f'Default: {os.path.join(os.getcwd(), "metrabs_models")}')
 parser.add_argument('--DEBUG', metavar='d', type=bool, default=False, help='Debug Mode, Default: False')
 
+
 def pose_data_to_json(pose_data_samples):
     """
     Write 2D Keypoints to Json File
@@ -46,7 +42,6 @@ def pose_data_to_json(pose_data_samples):
     """
     json_data = {}
     json_data["people"] = []
-
 
     json_data = {}
     json_data["people"] = []
@@ -66,13 +61,16 @@ def pose_data_to_json(pose_data_samples):
 
     return json_data
 
+
 def json_out(pred, id, json_dir, video):
     json_name = os.path.join(json_dir, f"{os.path.basename(video).split('.mp4')[0]}_{id:06d}.json")
     json_file = open(json_name, "w")
     json.dump(pose_data_to_json(pred), json_file, indent=6)
     id += 1
 
-def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_json, model_path, skeleton='coco_19', DEBUG=False):
+
+def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_json, model_path, skeleton='coco_19',
+                               DEBUG=False):
     """
     This sscript uses metrabs for 2D Pose estimation and writes json files.
 
@@ -94,12 +92,13 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_jso
         model = hub.load(model_path)
     except:
         tmp = os.path.join(os.getcwd(), 'metrabs_models')
-        #tmp = input("Loading model failed. The model will be donwloaded. Please give a path to save the model.") ##If we want to give the choice of the path to the user
+        # tmp = input("Loading model failed. The model will be donwloaded. Please give a path to save the model.") ##If we want to give the choice of the path to the user
         if not os.path.exists(tmp):
             os.makedirs(tmp)
 
         os.environ['TFHUB_CACHE_DIR'] = tmp
-        model = hub.load('https://bit.ly/metrabs_l')  # To load the model from the internet and save it in a given tmp folder
+        model = hub.load(
+            'https://bit.ly/metrabs_l')  # To load the model from the internet and save it in a given tmp folder
 
     # Check if the directory exists, if not create it
     if not os.path.exists(dir_out_video):
@@ -167,13 +166,13 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_jso
         progress = tqdm(total=tot_frames, desc=f"Processing {video_name}", position=0, leave=True)
 
         for frame_batch in frame_batches:
-            pred = model.detect_poses_batched(frame_batch, intrinsic_matrix=intrinsic_matrix[tf.newaxis], skeleton=skeleton)
+            pred = model.detect_poses_batched(frame_batch, intrinsic_matrix=intrinsic_matrix[tf.newaxis],
+                                              skeleton=skeleton)
 
             bboxes = pred['boxes']
             pose_result_2d = pred['poses2d']
 
             print(pose_result_2d)
-
 
         while True:
             # Read frame from the webcam
@@ -187,11 +186,11 @@ def metrabs_pose_estimation_2d(dir_video, calib_file, dir_out_video, dir_out_jso
             if DEBUG:
                 if frame_idx == 30:
                     break
-            #convert Image t0 jpeg
+            # convert Image t0 jpeg
             _, frame = cv2.imencode('.jpg', frame)
             frame = frame.tobytes()
 
-            #covnert jpeg to tensor and run prediction
+            # covnert jpeg to tensor and run prediction
             frame = tf.image.decode_jpeg(frame, channels=3)
 
             ##############################################
@@ -222,7 +221,7 @@ if __name__ == '__main__':
         print("Debug Mode is activated\n"
               "Starting debugging script.")
 
-        if os.name == 'posix': # if running on WSL
+        if os.name == 'posix':  # if running on WSL
             args.model_path = "/mnt/c/iDrink/metrabs_models/tensorflow/metrabs_eff2l_y4_384px_800k_28ds/d8503163f1198d9d4ee97bfd9c7f316ad23f3d90"
             args.dir_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/recordings"
             args.dir_out_video = "/mnt/c/iDrink/Session Data/S20240501-115510/S20240501-115510_P07/S20240501-115510_P07_T44/videos/pose"
@@ -232,7 +231,7 @@ if __name__ == '__main__':
             args.filter_2d = False
 
         else:
-            args.model_path= r"C:\iDrink\metrabs_models\tensorflow\metrabs_eff2l_y4_384px_800k_28ds\d8503163f1198d9d4ee97bfd9c7f316ad23f3d90"
+            args.model_path = r"C:\iDrink\metrabs_models\tensorflow\metrabs_eff2l_y4_384px_800k_28ds\d8503163f1198d9d4ee97bfd9c7f316ad23f3d90"
             args.dir_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\recordings"
             args.dir_out_video = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\videos\pose"
             args.dir_out_json = r"C:\iDrink\Session Data\S20240501-115510\S20240501-115510_P07\S20240501-115510_P07_T44\pose"
